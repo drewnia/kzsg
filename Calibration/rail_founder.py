@@ -7,7 +7,10 @@ from kzsg_utils import *
 
 ###Для отладки
 SAVE_CANNY_IMG = True # сохранить изображение Canny
-SHOW_HOUGH_LINES = False #Показать окно с линиями Хафа
+SHOW_CANNY_IMG = True #Показать окно с Canny
+SHOW_HOUGH_LINES = True #Показать окно с линиями Хафа
+SHOW_ONLY_LEFT_AND_RIGHT = True #показать только крайние линии Хафа
+# SHOW_WARPED = True #Показать преобразованное изображение
 CROPED = False #Если фотки были обрезаны от первоначального размера
 SELECT_LINES_OF_RAILS = True # для сохранения областей по каждому пути
 ###
@@ -22,7 +25,7 @@ blur_w = 21 #чем больше рельсы ПАРАЛЛЕЛЬНЫ верти�
 blur_h = 21 #чем больше рельсы ПАРАЛЛЕЛЬНЫ вертикали/горизонтали, тем больше значение
 
 sleeper_length = 50 # примерное расстояние между рельсами в пикселях (длина шпалы) в нижней части изображения
-num_of_sector = 8
+num_of_sector = 12
 ## Стандартно определяются через номер сектора
 # HORIZONTAL_RAILS = False # направление рельсов горизонатольное или вертикальное
 # UP_TO_DOWN = False #Направление рельсов сверху внизу (или справа налево)
@@ -51,6 +54,12 @@ gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 gray = cv2.GaussianBlur(gray, (blur_w, blur_h), 0)
 if True: ## use only canny
     edges = cv2.Canny(gray,10,50)
+    if SHOW_CANNY_IMG:
+        cv2.namedWindow("Canny",cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("Canny",300,300)
+        cv2.imshow("Canny",edges)
+        cv2.waitKey()
+        cv2.destroyWindow("Canny")
 else:
     gray = cv2.medianBlur(gray, 21)
     adapt_type = cv2.ADAPTIVE_THRESH_GAUSSIAN_C
@@ -65,16 +74,23 @@ if SAVE_CANNY_IMG:
 
 lines = cv2.HoughLines(edges,1,np.pi/180,200)
 
-###выделим координаты и найдем максимальную длину линии
+###выделим координаты
 real_lines = []
-max_dist = 0
 for i in range(0, len(lines)):
     for rho1, theta1 in lines[i]:
         real_lines.append(get_line(rho1, theta1, w, h))
         x1, y1, x2, y2 = real_lines[-1]
-        if max_dist < euclid_dist(x1,y1,x2,y2):
-            max_dist = euclid_dist(x1,y1,x2,y2)
 ###
+
+if SHOW_HOUGH_LINES:
+    img_copy = img.copy()
+    for line in real_lines:
+        x1, y1, x2, y2 = line
+        cv2.line(img_copy,(x1,y1),(x2,y2),(0,0,255),2)
+    cv2.imshow("hough raw",img_copy)
+    cv2.waitKey()
+    cv2.destroyWindow("hough raw")
+
 ###расположим элементы слева направо
 for i in range(0, len(lines)):
     for j in range(len(lines)-1, i, -1):
@@ -118,30 +134,44 @@ for i in range(0, len(real_lines)):
             minx2 = x4
         x,y = get_intersection(x1,x2,x3,x4,y1,y2,y3,y4)
 #если отрезки пересекаются или расположены близко друг к другу (или мнимые), то удаляем
-        if (0 <= x <= w and 0 <= y <= h) or \
-                (abs(minx1 - minx2) < sleeper_length) or \
-                [x3, y3, x4, y4] == [0,0,0,0]:
+        if (0 <= x <= w and 0 <= y <= h): #or \
+                # (abs(minx1 - minx2) < sleeper_length) or \
+                # [x3, y3, x4, y4] == [0,0,0,0]:
 
             real_lines = np.delete(real_lines, j, axis=0)
 ###
 
-#удалим короткие линии
+
+###удалим короткие линии
+#найдем среднюю длину
+av_dist = 0
+for line in real_lines:
+    x1, y1, x2, y2 = line
+    av_dist += euclid_dist(x1, y1, x2, y2)
+
+av_dist /= len(real_lines)
+#удалим линии меньше средней длины
 for i in range(len(real_lines)-1, -1, -1):
     x1, y1, x2, y2 = real_lines[i]
     dist = euclid_dist(x1,y1,x2,y2)
-    if dist < 3*max_dist / 4:
+    if dist < av_dist * 3/4:
         real_lines = np.delete(real_lines, i, axis = 0)
-
-
-###нарисуем линии
-for line in real_lines:
-    x1, y1, x2, y2 = line
-    cv2.line(img,(x1,y1),(x2,y2),(0,0,255),2)
-    if SHOW_HOUGH_LINES:
-        cv2.imshow("img",img)
-        cv2.waitKey()
 ###
 
+###нарисуем линии
+if SHOW_ONLY_LEFT_AND_RIGHT:
+    for line in [real_lines[0], real_lines[-1]]:
+        x1, y1, x2, y2 = line
+        cv2.line(img, (x1, y1), (x2, y2), (0, 0, 255), 2)
+else:
+    for line in real_lines:
+        x1, y1, x2, y2 = line
+        cv2.line(img,(x1,y1),(x2,y2),(0,0,255),2)
+###
+if SHOW_HOUGH_LINES:
+    cv2.imshow("hough",img)
+    cv2.waitKey()
+    cv2.destroyWindow("hough")
 ###warping - изменение перспективы (приведение к 2D виду)
 
 x_down_left, y_down_left, x_up_left, y_up_left = real_lines[0]
@@ -187,6 +217,10 @@ pts2 = np.float32([[0, h], [0, 0], [w, 0], [w, h]])
 M = cv2.getPerspectiveTransform(pts1, pts2)
 
 warped = cv2.warpPerspective(orig_img, M, (w, h))
+
+# if SHOW_WARPED:
+#     cv2.imshow("warped",warped)
+#     cv2.waitKey()
 
 #нарисуем и сохраним области для каждого пути
 if (SELECT_LINES_OF_RAILS):

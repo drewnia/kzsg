@@ -42,9 +42,9 @@ def get_folders_traindata(path):
 
 def check_sector_num(sector_num: int):
     hr, ud = False, False#horizontal rails, up_to_down
-    if int(sector_num) not in (2, 5, 8, 11):#Если не вертикальный сектор
+    if int(sector_num) not in (2, 4, 5, 7, 8, 9, 10, 11, 12):#Если не вертикальный сектор
         hr = True
-    if int(sector_num) in (3, 4, 9, 10):#Если рельсы направлены сверху вниз (или справа налево)
+    if int(sector_num) in [3]:#Если рельсы направлены сверху вниз
         ud = True
     return hr, ud
 
