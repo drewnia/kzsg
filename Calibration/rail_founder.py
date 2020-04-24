@@ -21,7 +21,7 @@ SELECT_LINES_OF_RAILS = True # для сохранения областей по
 blur_w = 21 #чем больше рельсы ПАРАЛЛЕЛЬНЫ вертикали/горизонтали, тем МЕНЬШЕ значение
 blur_h = 21 #чем больше рельсы ПАРАЛЛЕЛЬНЫ вертикали/горизонтали, тем больше значение
 
-sleeper_length = 50 # примерное расстояние между рельсами в пикселях (длина шпалы) в нижней части изображения
+
 num_of_sector = 8
 ## Стандартно определяются через номер сектора
 # HORIZONTAL_RAILS = False # направление рельсов горизонатольное или вертикальное
@@ -210,28 +210,14 @@ for x in [x_down_right, x_up_right]:
 
 pts1 = np.float32([[x_down_left, y_down_left], [x_up_left, y_up_left], [x_up_right, y_up_right], [x_down_right, y_down_right]])
 pts2 = np.float32([[0, h], [0, 0], [w, 0], [w, h]])
-
-
-
 M = cv2.getPerspectiveTransform(pts1, pts2)
-
-# p_test = [w/2, h/2, 1]
-pts = np.array([[852, 255]], dtype = "float32")
-cv2.circle(orig_img, (pts[0][0], pts[0][1]),2,(0,0,255),26)
-if SHOW_WARPED:
-    cv2.imshow("orig_img",orig_img)
-    cv2.waitKey()
-pts = np.array([pts])
-pts_warped = cv2.perspectiveTransform(pts, M)[0][0]
-
-
 warped = cv2.warpPerspective(orig_img, M, (w, h))
-cv2.circle(warped, (pts_warped[0], pts_warped[1]),2,(0,0,255),26)
 
 
 if SHOW_WARPED:
     cv2.imshow("warped",warped)
     cv2.waitKey()
+    cv2.destroyWindow("warped")
 
 #нарисуем и сохраним области для каждого пути
 if (SELECT_LINES_OF_RAILS):
@@ -250,4 +236,4 @@ cv2.imwrite(path_to_hough,img)
 cv2.imwrite(path_to_warped,warped)
 
 warping_points_file = "warping_coefs_"+str(num_of_sector)
-np.savetxt(warping_points_file, pts1, delimiter=',')
+np.savetxt(warping_points_file, M, delimiter=',')

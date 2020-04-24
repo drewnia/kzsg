@@ -19,6 +19,14 @@ def get_dist(point1, point2):
     return round(r)
 
 class Sector():
+    r = 100
+    A = [(0, 435), (260, 1079), (620, 1079), (1163, 1079), (1508, 1079), (1836, 1079)]
+    B = [(44, 218), (203, 540), (657, 540), (1153, 540), (1471, 540), (1773, 540)]
+    C = [(87, 0), (386, 0), (693, 0), (1142, 0), (1433, 0), (1710, 0)]
+    L = [10, 20, 20, 20, 20, 20]
+    WAY = [14, 15, 16, 17, 18, 19]
+    ADD = 34
+    warping_matrix = None
     def __init__(self, sec_num):
         self.sec_num = sec_num
         if sec_num == 1:
@@ -142,11 +150,13 @@ class Sector():
         return way
 
 
+
+
 if __name__ == "__main__":
     num_of_sector = 8
     num_of_way = 18
     point = (776,618)
-    point = (869, 1)
+    # point = (869, 1)
     sector = Sector(num_of_sector)
     dist = sector.get_D_via_point(point,num_of_way)
 

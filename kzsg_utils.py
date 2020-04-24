@@ -4,6 +4,8 @@ from shutil import rmtree
 import numpy as np
 import cv2
 
+sleeper_length = 50  # примерное расстояние между рельсами в пикселях (длина шпалы) в нижней части изображения
+min_car_length = 7  # минимальная длина вагона с учетом погрешности расстояний
 
 def getListOfFiles(dirName):
     # create a list of file and sub directories
@@ -127,3 +129,26 @@ def get_intersection(x1 : int,x2 : int,x3 : int,x4 : int,y1 : int,y2 : int,y3 : 
         x = -1
         y = -1
     return x, y
+
+
+def from_real_to_warped(x,y, M):
+    pts = np.array([[x, y]], dtype="float32")
+    pts = np.array([pts])
+    x,y = cv2.perspectiveTransform(pts, M)[0][0]
+    return int(x), int(y)
+
+
+def from_warped_to_real(x,y,M):
+    pts = np.array([[x, y]], dtype="float32")
+    pts = np.array([pts])
+    M_inv = np.linalg.pinv(M)
+    x,y = cv2.perspectiveTransform(pts, M_inv )[0][0]
+    return int(x), int(y)
+
+
+def show_and_destroy_img(name,img):
+    cv2.namedWindow(name, cv2.WINDOW_NORMAL)
+    cv2.resizeWindow(name, 300, 300)
+    cv2.imshow(name, img)
+    cv2.waitKey()
+    cv2.destroyWindow(name)
